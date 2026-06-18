@@ -22,12 +22,13 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOSTNAME=0.0.0.0
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-nvidia/nemotron-3-ultra-550b-a55b:free}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
     networks:
       - default
-      - umami_default
 
   osiris-cache:
     image: nginx:alpine
@@ -57,9 +58,7 @@ services:
 volumes:
   nginx-cache:
 
-networks:
-  umami_default:
-    external: true
+networks: {}
 
 # ── CasaOS app-store metadata (ignored by plain Docker Compose) ──
 x-casaos:

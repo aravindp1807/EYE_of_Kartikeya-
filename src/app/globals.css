@@ -1,67 +1,69 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════
-   OSIRIS — Global Intelligence Platform Design System
-   Egyptian Mythology × Dark Ops × Glassmorphism
+   EYE OF KARTIKEYA — Global Intelligence Command Design System
+   Warrior-God Mythology × Dark Ops × Blood & Obsidian Glassmorphism
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-  --gold-rgb: 212, 175, 55;
-  --cyan-rgb: 0, 229, 255;
-  /* ── Core Palette ── */
-  --bg-void: #04040A;
-  --bg-primary: #06060C;
-  --bg-secondary: #0C0E1A;
-  --bg-tertiary: #121628;
-  --bg-panel: rgba(8, 10, 20, 0.88);
-  --bg-panel-solid: #0C0E1A;
+  --gold-rgb: 200, 140, 20;
+  --cyan-rgb: 180, 20, 20;
 
-  /* ── Gold Accent (Eye of Horus) ── */
-  --gold-primary: #D4AF37;
-  --gold-light: #F0D060;
-  --gold-dim: #8B7325;
-  --gold-glow: rgba(var(--gold-rgb), 0.3);
+  /* ── Core Palette ── deep obsidian with blood undertones */
+  --bg-void: #030008;
+  --bg-primary: #07000F;
+  --bg-secondary: #0E0018;
+  --bg-tertiary: #160025;
+  --bg-panel: rgba(10, 0, 18, 0.91);
+  --bg-panel-solid: #0E0018;
 
-  /* ── Cyan Intel Stream ── */
-  --cyan-primary: #00E5FF;
-  --cyan-dim: #006B7A;
-  --cyan-glow: rgba(var(--cyan-rgb), 0.15);
+  /* ── Gold Accent (Vel of Kartikeya) ── */
+  --gold-primary: #C88C14;
+  --gold-light: #E8B040;
+  --gold-dim: #7A5208;
+  --gold-glow: rgba(200, 140, 20, 0.3);
+
+  /* ── Crimson War-Stream ── replaces cyan with blood-red */
+  --cyan-primary: #CC1A1A;
+  --cyan-dim: #6B0000;
+  --cyan-glow: rgba(180, 20, 20, 0.18);
 
   /* ── Alert Colors ── */
-  --alert-red: #FF3D3D;
-  --alert-orange: #FF9500;
-  --alert-green: #00E676;
-  --alert-blue: #448AFF;
+  --alert-red: #FF2020;
+  --alert-orange: #E07000;
+  --alert-green: #00C853;
+  --alert-blue: #3D6DCC;
 
-  /* ── Accent Colors (layer-specific) ── */
-  --accent-weather: #E040FB;
-  --accent-nuclear: #76FF03;
+  /* ── Accent Colors ── */
+  --accent-weather: #B03090;
+  --accent-nuclear: #60D010;
 
   /* ── Borders ── */
-  --border-primary: rgba(var(--gold-rgb), 0.15);
-  --border-secondary: rgba(var(--gold-rgb), 0.08);
-  --border-active: rgba(var(--gold-rgb), 0.4);
-  --border-cyan: rgba(var(--cyan-rgb), 0.2);
+  --border-primary: rgba(200, 140, 20, 0.18);
+  --border-secondary: rgba(200, 140, 20, 0.08);
+  --border-active: rgba(200, 140, 20, 0.45);
+  --border-cyan: rgba(180, 20, 20, 0.22);
 
-  /* ── Text ── */
-  --text-primary: #E8E6E0;
-  --text-secondary: #9B978E;
-  --text-muted: #5C5A54;
-  --text-heading: #F5F0E0;
-  --text-gold: #D4AF37;
-  --text-cyan: #00E5FF;
+  /* ── Text ── warm parchment tones */
+  --text-primary: #EDE0CC;
+  --text-secondary: #9B8A72;
+  --text-muted: #5C4A38;
+  --text-heading: #F5E8C8;
+  --text-gold: #C88C14;
+  --text-cyan: #CC1A1A;
 
   /* ── Scrollbar ── */
-  --scrollbar-thumb: rgba(var(--gold-rgb), 0.2);
-  --scrollbar-thumb-hover: rgba(var(--gold-rgb), 0.4);
+  --scrollbar-thumb: rgba(200, 140, 20, 0.2);
+  --scrollbar-thumb-hover: rgba(200, 140, 20, 0.4);
 
   /* ── Hover ── */
-  --hover-accent: rgba(var(--gold-rgb), 0.08);
+  --hover-accent: rgba(200, 140, 20, 0.08);
 
   /* ── Fonts ── */
   --font-hud: 'JetBrains Mono', 'Courier New', monospace;
   --font-body: 'Inter', -apple-system, sans-serif;
+  --font-title: 'Cinzel', 'Georgia', serif;
 
   /* ── Spacing (responsive) ── */
   --panel-gap: 12px;

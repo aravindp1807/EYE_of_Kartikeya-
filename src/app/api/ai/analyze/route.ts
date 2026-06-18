@@ -2,7 +2,7 @@
  * ═══════════════════════════════════════════════════════════════
  *  OSIRIS — AI Intelligence Analysis Endpoint
  *  POST /api/ai/analyze
- *  Rate-limited, multi-key Gemini integration
+ *  Rate-limited OpenRouter integration (Nemotron / any OR model)
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -62,11 +62,13 @@ setInterval(() => {
 
 function getEnvApiKeys(): string[] {
   const keys: string[] = [];
-  for (let i = 1; i <= 8; i++) {
-    const key = process.env[`GEMINI_API_KEY_${i}`];
-    if (key && key.trim().length > 0) {
-      keys.push(key.trim());
-    }
+  // Primary key
+  const primary = process.env['OPENROUTER_API_KEY'];
+  if (primary && primary.trim().length > 0) keys.push(primary.trim());
+  // Additional round-robin keys: OPENROUTER_API_KEY_2, _3 … _8
+  for (let i = 2; i <= 8; i++) {
+    const key = process.env[`OPENROUTER_API_KEY_${i}`];
+    if (key && key.trim().length > 0) keys.push(key.trim());
   }
   return keys;
 }
@@ -126,7 +128,7 @@ export async function POST(
   }
 
   // Determine API key — user-provided header takes priority
-  const userKey = request.headers.get('x-gemini-key')?.trim();
+  const userKey = request.headers.get('x-openrouter-key')?.trim();
   let apiKey: string;
 
   if (userKey && userKey.length > 0) {
@@ -137,7 +139,7 @@ export async function POST(
       return NextResponse.json(
         {
           error:
-            'No Gemini API key configured. Set GEMINI_API_KEY_1 in environment or provide a key via the settings panel.',
+            'No OpenRouter API key configured. Set OPENROUTER_API_KEY in environment or provide a key via the settings panel.',
           code: 'NO_API_KEY',
         },
         { status: 503 }
@@ -179,7 +181,7 @@ export async function POST(
     return NextResponse.json(
       {
         analysis,
-        model: 'gemini-2.0-flash',
+        model: process.env.OPENROUTER_MODEL ?? 'nvidia/nemotron-3-ultra-550b-a55b:free',
         timestamp: new Date().toISOString(),
       },
       {
@@ -189,20 +191,19 @@ export async function POST(
       }
     );
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown Gemini API error';
+    const message = err instanceof Error ? err.message : 'Unknown OpenRouter API error';
 
-    // Detect specific Gemini error types
-    if (message.includes('API_KEY_INVALID') || message.includes('API key not valid')) {
+    if (message.includes('API_KEY_INVALID') || message.includes('401')) {
       return NextResponse.json(
-        { error: 'Invalid Gemini API key. Please check your configuration.', code: 'INVALID_KEY' },
+        { error: 'Invalid OpenRouter API key. Please check your configuration.', code: 'INVALID_KEY' },
         { status: 401 }
       );
     }
 
-    if (message.includes('RESOURCE_EXHAUSTED') || message.includes('quota')) {
+    if (message.includes('RESOURCE_EXHAUSTED') || message.includes('429') || message.includes('quota')) {
       return NextResponse.json(
         {
-          error: 'Gemini API quota exhausted. Try again later or provide your own API key.',
+          error: 'OpenRouter rate limit reached. Try again in a moment.',
           code: 'QUOTA_EXHAUSTED',
         },
         { status: 429 }
@@ -212,7 +213,7 @@ export async function POST(
     if (message.includes('SAFETY')) {
       return NextResponse.json(
         {
-          error: 'Response blocked by Gemini safety filters. Try rephrasing your query.',
+          error: 'Response blocked by content filters. Try rephrasing your query.',
           code: 'SAFETY_BLOCKED',
         },
         { status: 422 }

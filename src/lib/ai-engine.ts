@@ -1,12 +1,12 @@
 /**
  * ═══════════════════════════════════════════════════════════════
  *  OSIRIS — AI Intelligence Engine
- *  Gemini 2.0 Flash integration for real-time intelligence analysis
- *  Designed to correlate multi-domain feeds into actionable briefings
+ *  OpenRouter integration (OpenAI-compatible API)
+ *  Drop-in replacement for the Gemini SDK — same exported interface.
+ *  Model: configured via OPENROUTER_MODEL env var
+ *        (default: nvidia/nemotron-3-ultra-550b-a55b:free)
  * ═══════════════════════════════════════════════════════════════
  */
-
-import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
 
 /* ─────────────────────────────────────────────────────────────
    Data Interfaces — Zero `any` types
@@ -67,6 +67,42 @@ export interface IntelligenceContext {
   threats: ThreatEvent[];
   cyberAlerts: CyberAlert[];
   timestamp: string;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   OpenRouter Client — thin wrapper so route files stay unchanged
+   ───────────────────────────────────────────────────────────── */
+
+export interface OpenRouterClient {
+  apiKey: string;
+  model: string;
+  baseUrl: string;
+}
+
+/** Drop-in replacement for createGeminiClient() */
+export function createGeminiClient(apiKey: string): OpenRouterClient {
+  return {
+    apiKey,
+    model:
+      process.env.OPENROUTER_MODEL ??
+      'nvidia/nemotron-3-ultra-550b-a55b:free',
+    baseUrl: 'https://openrouter.ai/api/v1',
+  };
+}
+
+/* ─────────────────────────────────────────────────────────────
+   API Key Rotation — Round-robin through available keys
+   ───────────────────────────────────────────────────────────── */
+
+let _keyIndex = 0;
+
+export function rotateApiKey(keys: string[]): string {
+  if (keys.length === 0) {
+    throw new Error('No API keys available');
+  }
+  const key = keys[_keyIndex % keys.length];
+  _keyIndex = (_keyIndex + 1) % keys.length;
+  return key;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -140,29 +176,6 @@ State overall confidence level and key analytical gaps.
 Analyze the provided data thoroughly. Be specific — reference actual events, magnitudes, locations, and CVE IDs from the context.`;
 
 /* ─────────────────────────────────────────────────────────────
-   Client Factory
-   ───────────────────────────────────────────────────────────── */
-
-export function createGeminiClient(apiKey: string): GoogleGenerativeAI {
-  return new GoogleGenerativeAI(apiKey);
-}
-
-/* ─────────────────────────────────────────────────────────────
-   API Key Rotation — Round-robin through available keys
-   ───────────────────────────────────────────────────────────── */
-
-let _keyIndex = 0;
-
-export function rotateApiKey(keys: string[]): string {
-  if (keys.length === 0) {
-    throw new Error('No API keys available');
-  }
-  const key = keys[_keyIndex % keys.length];
-  _keyIndex = (_keyIndex + 1) % keys.length;
-  return key;
-}
-
-/* ─────────────────────────────────────────────────────────────
    Context Serializer — Compact representation for token efficiency
    ───────────────────────────────────────────────────────────── */
 
@@ -214,22 +227,70 @@ function serializeContext(context: IntelligenceContext): string {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Intelligence Analysis
+   Core OpenRouter fetch — shared by analyze and briefing
+   ───────────────────────────────────────────────────────────── */
+
+async function openRouterChat(
+  client: OpenRouterClient,
+  systemPrompt: string,
+  userMessage: string
+): Promise<string> {
+  const res = await fetch(`${client.baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${client.apiKey}`,
+      'HTTP-Referer': 'https://osirisai.live',
+      'X-Title': 'OSIRIS Intelligence Platform',
+    },
+    body: JSON.stringify({
+      model: client.model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      temperature: 0.3,   // Lower = more factual, less creative
+      max_tokens: 4096,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => res.statusText);
+
+    // Map OpenRouter error codes to strings the route files already check
+    if (res.status === 401) throw new Error('API_KEY_INVALID: ' + errText);
+    if (res.status === 429) throw new Error('RESOURCE_EXHAUSTED: ' + errText);
+    if (res.status === 422) throw new Error('SAFETY: ' + errText);
+
+    throw new Error(`OpenRouter error ${res.status}: ${errText}`);
+  }
+
+  interface OpenRouterResponse {
+    choices: Array<{ message: { content: string } }>;
+  }
+
+  const data = (await res.json()) as OpenRouterResponse;
+  const content = data?.choices?.[0]?.message?.content;
+
+  if (!content) {
+    throw new Error('Empty response from OpenRouter');
+  }
+
+  return content;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Intelligence Analysis — same signature as Gemini version
    ───────────────────────────────────────────────────────────── */
 
 export async function analyzeIntelligence(
-  client: GoogleGenerativeAI,
+  client: OpenRouterClient,
   context: IntelligenceContext,
   userQuery: string
 ): Promise<string> {
-  const model: GenerativeModel = client.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    systemInstruction: SYSTEM_PROMPT,
-  });
-
   const contextData = serializeContext(context);
 
-  const prompt = `## CURRENT OPERATIONAL DATA
+  const userMessage = `## CURRENT OPERATIONAL DATA
 ${contextData}
 
 ## ANALYST QUERY
@@ -237,34 +298,25 @@ ${userQuery}
 
 Provide your intelligence assessment based on the operational data above and the analyst's query.`;
 
-  const result = await model.generateContent(prompt);
-  const response = result.response;
-  return response.text();
+  return openRouterChat(client, SYSTEM_PROMPT, userMessage);
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Daily Briefing Generation
+   Daily Briefing Generation — same signature as Gemini version
    ───────────────────────────────────────────────────────────── */
 
 export async function generateBriefing(
-  client: GoogleGenerativeAI,
+  client: OpenRouterClient,
   context: IntelligenceContext
 ): Promise<string> {
-  const model: GenerativeModel = client.getGenerativeModel({
-    model: 'gemini-2.0-flash',
-    systemInstruction: SYSTEM_PROMPT,
-  });
-
   const contextData = serializeContext(context);
 
-  const prompt = `${BRIEFING_PROMPT}
+  const userMessage = `${BRIEFING_PROMPT}
 
 ## CURRENT OPERATIONAL DATA
 ${contextData}
 
 Generate the briefing now.`;
 
-  const result = await model.generateContent(prompt);
-  const response = result.response;
-  return response.text();
+  return openRouterChat(client, SYSTEM_PROMPT, userMessage);
 }
